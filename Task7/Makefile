@@ -17,7 +17,7 @@ $(LIB_NAME): $(LIB_OBJ)
 		ar rc $@ $^
 
 %.o: %.c
-		$(CC) $(CFLAGS) $< -c -o $@
+		$(CC) $< -c -o $@
 
 $(BIN): $(HDR)
 
