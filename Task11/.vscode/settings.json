@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "threadfunc.h": "c",
+        "threaddefines.h": "c"
+    }
+}
