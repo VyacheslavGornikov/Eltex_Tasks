@@ -105,7 +105,6 @@ void execute_command(char* cmd, char files[][256], int *num_files, char* path)
     } 
     else 
     {
-        perror("fork");
-        return;
+        ERROR_MESSAGE("fork error");
     }
 }
