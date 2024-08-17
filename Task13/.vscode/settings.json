@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "fcntl.h": "c",
+        "stat.h": "c",
+        "unistd.h": "c",
+        "chatroom.h": "c",
+        "pthread.h": "c",
+        "stdio.h": "c",
+        "errno.h": "c"
+    }
+}
