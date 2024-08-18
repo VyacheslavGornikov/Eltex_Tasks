@@ -23,6 +23,7 @@
 do { \
     printf("%s -> ", message); \
     printf("%s, %s : %d\n", strerror(errno), __FILE__,__LINE__); \
+    remove_queues(); \
     exit(EXIT_FAILURE); \
 } while (0)
 

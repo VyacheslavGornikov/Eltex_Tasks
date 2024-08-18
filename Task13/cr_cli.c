@@ -2,10 +2,13 @@
 #include "chatroom.h"
 #include <ncurses.h>
 
-int clientId;
+static int serverId;
+static int clientId;
+char client_name[NAME_LENGTH];
 
 void handle_sigint(int sig);
 void remove_queues (void);
+void disconnect_client (void);
 
 int main(int argc, char *argv[]) 
 {
@@ -24,14 +27,10 @@ int main(int argc, char *argv[])
     // int cli_list_size = 0;
     char **client_list = NULL;
     int cli_list_size = 0;
-
-
-    char client_name[NAME_LENGTH];
-    char client_message[MESSAGE_LENGTH];
-    strncpy(client_name, argv[1], NAME_LENGTH);
-    int serverId;
     
-
+    char client_message[MESSAGE_LENGTH];
+    strncpy(client_name, argv[1], NAME_LENGTH);   
+    
     serverId =  msgget(SERVER_KEY, S_IWUSR);
     if (serverId < 0) 
     {
@@ -104,53 +103,51 @@ int main(int argc, char *argv[])
                 printf("Cname: %s\n", client_list[i]);
             }
         }
-        // else if (resp.response_type == MESSAGE_INFO) 
-        // {
-        //     mes_list_size = resp.list_size;
-        //     message_list = realloc(message_list, mes_list_size * sizeof(Message));
+        else if (resp.response_type == MESSAGE_INFO) 
+        {
+            mes_list_size = resp.list_size;
+            message_list = realloc(message_list, mes_list_size * sizeof(Message));
 
-        //     int i = 0;
-        //     strncpy(message_list[i].client_name, resp.msg.client_name, NAME_LENGTH);
-        //     strncpy(message_list[i].message, resp.msg.message, MESSAGE_LENGTH);
-        //     strncpy(message_list[i].datetime, resp.msg.datetime, DATE_LENGTH);
-        //     i++;
+            int i = 0;
+            strncpy(message_list[i].client_name, resp.msg.client_name, NAME_LENGTH);
+            strncpy(message_list[i].message, resp.msg.message, MESSAGE_LENGTH);
+            strncpy(message_list[i].datetime, resp.msg.datetime, DATE_LENGTH);
+            i++;
 
-        //     for (i; i < mes_list_size; i++) 
-        //     {
-        //         if (msgrcv(clientId, &resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
-        //         {
-        //             err_exit("msgrcv response from server to client error");
-        //         }
-        //         strncpy(message_list[i].client_name, resp.msg.client_name, NAME_LENGTH);
-        //         strncpy(message_list[i].message, resp.msg.message, MESSAGE_LENGTH);
-        //         strncpy(message_list[i].datetime, resp.msg.datetime, DATE_LENGTH);
-        //     }
+            for (i; i < mes_list_size; i++) 
+            {
+                if (msgrcv(clientId, &resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
+                {
+                    err_exit("msgrcv response from server to client error");
+                }
+                strncpy(message_list[i].client_name, resp.msg.client_name, NAME_LENGTH);
+                strncpy(message_list[i].message, resp.msg.message, MESSAGE_LENGTH);
+                strncpy(message_list[i].datetime, resp.msg.datetime, DATE_LENGTH);
+            }
 
-        //     printf("Сообщения:\n");
-        //     for (int i = 0; i < mes_list_size; i++) 
-        //     {
-        //         printf("%s\n", message_list[i].datetime);
-        //         printf("%s: %s\n", message_list[i].client_name, message_list[i].message);
-        //     }
-        // } 
+            printf("Сообщения:\n");
+            for (int i = 0; i < mes_list_size; i++) 
+            {
+                printf("%s\n", message_list[i].datetime);
+                printf("%s: %s\n", message_list[i].client_name, message_list[i].message);
+            }
+        } 
         
-        // printf("Введите сообщение: ");
-        // fgets(client_message, MESSAGE_LENGTH, stdin);
-        // req.client_id = clientId;
-        // req.mtype = SERVER;
-        // req.request_type = MESSAGE_INFO;
-        // strncpy(req.mtext, client_message, MESSAGE_LENGTH);
+        printf("Введите сообщение: ");
+        fgets(client_message, MESSAGE_LENGTH, stdin);
+        req.client_id = clientId;
+        req.mtype = SERVER;
+        req.request_type = MESSAGE_INFO;
+        strncpy(req.mtext, client_message, MESSAGE_LENGTH);
 
-        // if (msgsnd(serverId, &req, MESSAGE_LENGTH, 0) < 0) 
-        // {            
-        //     err_exit("msgsnd client to server error");
-        // }
+        if (msgsnd(serverId, &req, MESSAGE_LENGTH, 0) < 0) 
+        {            
+            err_exit("msgsnd client to server error");
+        }
 
 
     }
     
-    
-
     getchar();
 
     msgctl(clientId, IPC_RMID, NULL);
@@ -162,6 +159,7 @@ int main(int argc, char *argv[])
 
 void handle_sigint(int sig) 
 {
+    disconnect_client();
     printf("\nКлиент вышел из чата...\n");
     remove_queues();
     exit(EXIT_SUCCESS);
@@ -170,4 +168,18 @@ void handle_sigint(int sig)
 void remove_queues (void) 
 {
     msgctl(clientId, IPC_RMID, NULL);
+}
+
+void disconnect_client (void) 
+{
+    RequestMsg disc_req;
+    disc_req.client_id = clientId;
+    disc_req.mtype = SERVER;
+    disc_req.request_type = DISCONNECTION;
+
+    if (msgsnd(serverId, &disc_req, MESSAGE_LENGTH, 0) < 0) 
+    {
+        err_exit("msgsnd client to server error");
+    }
+    
 }
