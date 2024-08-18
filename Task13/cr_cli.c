@@ -4,9 +4,18 @@
 
 static int serverId;
 static int clientId;
-char client_name[NAME_LENGTH];
+static pthread_t receiving_thread, sending_thread;
+static char client_name[NAME_LENGTH];
+
+Message *message_list = NULL;
+int mes_list_size = 0;
+char **client_list = NULL;
+int cli_list_size = 0; 
 
 void handle_sigint(int sig);
+void* handle_response (void*);
+void* handle_message (void*);
+void cancel_pthreads (void);
 void remove_queues (void);
 void disconnect_client (void);
 
@@ -19,17 +28,10 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    RequestMsg req;
-    ResponseMsg resp;
-    Message *message_list = NULL;
-    int mes_list_size = 0;
-    // Client *client_list = NULL;
-    // int cli_list_size = 0;
-    char **client_list = NULL;
-    int cli_list_size = 0;
+    RequestMsg req;  
+       
     
-    char client_message[MESSAGE_LENGTH];
-    strncpy(client_name, argv[1], NAME_LENGTH);   
+    strncpy(client_name, argv[1], NAME_LENGTH);       
     
     serverId =  msgget(SERVER_KEY, S_IWUSR);
     if (serverId < 0) 
@@ -57,8 +59,36 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    while (1)
+    if (pthread_create(&sending_thread, NULL, handle_message, NULL) != 0) 
     {
+        err_exit("pthread_create sending_thread");
+    }
+    if (pthread_create(&receiving_thread, NULL, handle_response, NULL) != 0)
+    {
+        err_exit("pthread_create receiving_thread");
+    }
+    
+    
+    pthread_join(sending_thread, NULL);
+    pthread_join(receiving_thread, NULL);  
+        
+    exit(EXIT_SUCCESS);
+}
+
+void handle_sigint(int sig) 
+{
+    cancel_pthreads();
+    disconnect_client();
+    printf("\nКлиент вышел из чата...\n");    
+    remove_queues();
+    exit(EXIT_SUCCESS);
+}
+
+void* handle_response (void*) 
+{
+    ResponseMsg resp;
+    while (1)
+    {        
         if (msgrcv(clientId, &resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
         {
             err_exit("msgrcv response from server to client error");
@@ -66,8 +96,7 @@ int main(int argc, char *argv[])
         
         if (resp.response_type == CLIENT_INFO) 
         {
-            cli_list_size = resp.list_size;
-            printf("im here! size = %d\n", cli_list_size);
+            cli_list_size = resp.list_size;            
             client_list = realloc(client_list, cli_list_size * sizeof(char*));
             if (client_list == NULL) 
             {
@@ -82,12 +111,10 @@ int main(int argc, char *argv[])
                 }
             }
             
-            int i = 0;
-            printf("im here 2! resp = %s\n", resp.msg.client_name);
-            strncpy(client_list[i], resp.msg.client_name, NAME_LENGTH);
-            printf("im here 2/5! i = %d\n", i);
+            int i = 0;            
+            strncpy(client_list[i], resp.msg.client_name, NAME_LENGTH);            
             i++;
-            printf("im here 3! i = %d\n", i);
+            
             for (i; i < cli_list_size; i++) 
             {
                 if (msgrcv(clientId, &resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
@@ -131,9 +158,17 @@ int main(int argc, char *argv[])
                 printf("%s\n", message_list[i].datetime);
                 printf("%s: %s\n", message_list[i].client_name, message_list[i].message);
             }
-        } 
-        
-        printf("Введите сообщение: ");
+        }
+    }             
+}
+
+void* handle_message (void*) 
+{
+    RequestMsg req;
+    char client_message[MESSAGE_LENGTH];
+    while (1)
+    {
+        printf("Введите сообщение: ");        
         fgets(client_message, MESSAGE_LENGTH, stdin);
         req.client_id = clientId;
         req.mtype = SERVER;
@@ -144,25 +179,15 @@ int main(int argc, char *argv[])
         {            
             err_exit("msgsnd client to server error");
         }
-
-
-    }
-    
-    getchar();
-
-    msgctl(clientId, IPC_RMID, NULL);
-
-    
-    //run_messanger(argv[1]);
-    return 0;
+    }       
 }
 
-void handle_sigint(int sig) 
+void cancel_pthreads (void) 
 {
-    disconnect_client();
-    printf("\nКлиент вышел из чата...\n");
-    remove_queues();
-    exit(EXIT_SUCCESS);
+    pthread_cancel(sending_thread);
+    pthread_cancel(receiving_thread);
+    // pthread_join(receiving_thread, NULL);    
+    // pthread_join(sending_thread, NULL);
 }
 
 void remove_queues (void) 
