@@ -5,16 +5,12 @@
 static int serverId;
 static int clientId;
 static pthread_t receiving_thread, sending_thread;
-static char client_name[NAME_LENGTH];
-
-Message *message_list = NULL;
-int mes_list_size = 0;
-char **client_list = NULL;
-int cli_list_size = 0; 
 
 void handle_sigint(int sig);
 void* handle_response (void*);
+void receive_clients (ResponseMsg* resp, char*** client_list, int* cli_list_size);
 void* handle_message (void*);
+void receive_messages (ResponseMsg* resp, Message** message_list, int* mes_list_size);
 void cancel_pthreads (void);
 void remove_queues (void);
 void disconnect_client (void);
@@ -28,9 +24,8 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    RequestMsg req;  
-       
-    
+    RequestMsg req;      
+    static char client_name[NAME_LENGTH];
     strncpy(client_name, argv[1], NAME_LENGTH);       
     
     serverId =  msgget(SERVER_KEY, S_IWUSR);
@@ -86,7 +81,12 @@ void handle_sigint(int sig)
 
 void* handle_response (void*) 
 {
+    Message *message_list = NULL;
+    int mes_list_size = 0;
+    char **client_list = NULL;
+    int cli_list_size = 0; 
     ResponseMsg resp;
+
     while (1)
     {        
         if (msgrcv(clientId, &resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
@@ -96,33 +96,7 @@ void* handle_response (void*)
         
         if (resp.response_type == CLIENT_INFO) 
         {
-            cli_list_size = resp.list_size;            
-            client_list = realloc(client_list, cli_list_size * sizeof(char*));
-            if (client_list == NULL) 
-            {
-                err_exit("realloc");
-            }
-            for (int i = 0; i < cli_list_size; i++) 
-            {
-                client_list[i] = malloc(NAME_LENGTH);
-                if (client_list[i] == NULL) 
-                {
-                    err_exit("malloc");
-                }
-            }
-            
-            int i = 0;            
-            strncpy(client_list[i], resp.msg.client_name, NAME_LENGTH);            
-            i++;
-            
-            for (i; i < cli_list_size; i++) 
-            {
-                if (msgrcv(clientId, &resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
-                {
-                    err_exit("msgrcv response from server to client error");
-                }
-                strncpy(client_list[i], resp.msg.client_name, NAME_LENGTH);
-            }
+            receive_clients(&resp, &client_list, &cli_list_size);
             
             printf("Клиенты:\n");
             for (int i = 0; i < cli_list_size; i++) 
@@ -132,25 +106,7 @@ void* handle_response (void*)
         }
         else if (resp.response_type == MESSAGE_INFO) 
         {
-            mes_list_size = resp.list_size;
-            message_list = realloc(message_list, mes_list_size * sizeof(Message));
-
-            int i = 0;
-            strncpy(message_list[i].client_name, resp.msg.client_name, NAME_LENGTH);
-            strncpy(message_list[i].message, resp.msg.message, MESSAGE_LENGTH);
-            strncpy(message_list[i].datetime, resp.msg.datetime, DATE_LENGTH);
-            i++;
-
-            for (i; i < mes_list_size; i++) 
-            {
-                if (msgrcv(clientId, &resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
-                {
-                    err_exit("msgrcv response from server to client error");
-                }
-                strncpy(message_list[i].client_name, resp.msg.client_name, NAME_LENGTH);
-                strncpy(message_list[i].message, resp.msg.message, MESSAGE_LENGTH);
-                strncpy(message_list[i].datetime, resp.msg.datetime, DATE_LENGTH);
-            }
+            receive_messages(&resp, &message_list, &mes_list_size);
 
             printf("Сообщения:\n");
             for (int i = 0; i < mes_list_size; i++) 
@@ -160,6 +116,37 @@ void* handle_response (void*)
             }
         }
     }             
+}
+
+void receive_clients (ResponseMsg* resp, char*** client_list, int* cli_list_size) 
+{
+    *cli_list_size = resp->list_size;            
+    *client_list = realloc(*client_list, (*cli_list_size) * sizeof(char*));
+    if (*client_list == NULL && *cli_list_size != 0) 
+    {
+        err_exit("realloc");
+    }
+    for (int i = 0; i < *cli_list_size; i++) 
+    {
+        (*client_list)[i] = malloc(NAME_LENGTH);
+        if ((*client_list)[i] == NULL) 
+        {
+            err_exit("malloc");
+        }
+    }
+    
+    int i = 0;            
+    strncpy((*client_list)[i], resp->msg.client_name, NAME_LENGTH);            
+    i++;
+    
+    for (i; i < *cli_list_size; i++) 
+    {
+        if (msgrcv(clientId, resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
+        {
+            err_exit("msgrcv response from server to client error");
+        }
+        strncpy((*client_list)[i], resp->msg.client_name, NAME_LENGTH);
+    }
 }
 
 void* handle_message (void*) 
@@ -182,12 +169,36 @@ void* handle_message (void*)
     }       
 }
 
+void receive_messages (ResponseMsg* resp, Message** message_list, int* mes_list_size) 
+{
+    *mes_list_size = resp->list_size;
+    *message_list = realloc(*message_list, (*mes_list_size) * sizeof(Message));
+    if (*message_list == NULL) 
+    {
+        err_exit("realloc");
+    }
+    int i = 0;
+    strncpy((*message_list)[i].client_name, resp->msg.client_name, NAME_LENGTH);
+    strncpy((*message_list)[i].message, resp->msg.message, MESSAGE_LENGTH);
+    strncpy((*message_list)[i].datetime, resp->msg.datetime, DATE_LENGTH);
+    i++;
+
+    for (i; i < *mes_list_size; i++) 
+    {
+        if (msgrcv(clientId, resp, sizeof(ResponseMsg), CLIENT, 0) < 0) 
+        {
+            err_exit("msgrcv response from server to client error");
+        }
+        strncpy((*message_list)[i].client_name, resp->msg.client_name, NAME_LENGTH);
+        strncpy((*message_list)[i].message, resp->msg.message, MESSAGE_LENGTH);
+        strncpy((*message_list)[i].datetime, resp->msg.datetime, DATE_LENGTH);
+    }
+}
+
 void cancel_pthreads (void) 
 {
     pthread_cancel(sending_thread);
-    pthread_cancel(receiving_thread);
-    // pthread_join(receiving_thread, NULL);    
-    // pthread_join(sending_thread, NULL);
+    pthread_cancel(receiving_thread);    
 }
 
 void remove_queues (void) 
@@ -205,6 +216,5 @@ void disconnect_client (void)
     if (msgsnd(serverId, &disc_req, MESSAGE_LENGTH, 0) < 0) 
     {
         err_exit("msgsnd client to server error");
-    }
-    
+    }    
 }
