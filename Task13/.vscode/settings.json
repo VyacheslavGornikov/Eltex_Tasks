@@ -6,6 +6,9 @@
         "chatroom.h": "c",
         "pthread.h": "c",
         "stdio.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "ioctl.h": "c",
+        "ncurses.h": "c",
+        "msgserver.h": "c"
     }
 }

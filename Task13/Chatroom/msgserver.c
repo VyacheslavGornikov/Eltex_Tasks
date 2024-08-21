@@ -1,109 +1,21 @@
 #include "common.h"
-#include "chatroom.h"
+#include "msgserver.h"
 
-static int serverId;
+extern int serverId;
 
-void handle_sigint(int sig);
-void remove_queues (void);
-void grimReaper(int sig);
-void serve_request (const RequestMsg* req, Client** client_list, int* cli_list_size, Message** message_list, int* mes_list_size);
-void send_clients (Client* client_list, int cli_list_size);
-void send_messages (Client* client_list, int cli_list_size, Message* message_list, int mes_list_size);
-int get_client_index (const Client* list, int size, int client_id);
-void add_client (Client** list, const Client* const client, int* size);
-void remove_client (Client** list, int* size, int index);
-void add_message (Message** list, const Message* const message, int* size);
-
-int main() 
-{
-    //key_t key;
-    signal(SIGINT, handle_sigint);
-    //atexit(remove_queues);
-
-    RequestMsg req;
-    //ResponseMsg resp;
-    Message *message_list = NULL;
-    int mes_list_size = 0;
-    Client *client_list = NULL;
-    int cli_list_size = 0;
-    //pid_t pid;
-
-    // struct sigaction sa;
-    // sigemptyset(&sa.sa_mask);
-    // sa.sa_flags = SA_RESTART;
-    // sa.sa_handler = grimReaper;
-    // if (sigaction(SIGCHLD, &sa, NULL) == -1) 
-    // {
-    //     err_exit("sigaction");        
-    // }    
-    
-    serverId = msgget(SERVER_KEY, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
-    if (serverId < 0) 
-    {
-        err_exit("msgget server create error");        
-    }
-
-    printf("Сервер запущен и ожидает клиентов...\n");
-    
-    while (1)
-    {
-        if(msgrcv(serverId, &req, MESSAGE_LENGTH, SERVER, 0) < 0) 
-        {            
-            err_exit("msgrcv server error");
-        }        
-
-        serve_request(&req, &client_list, &cli_list_size, &message_list, &mes_list_size);                    
-
-    }   
-
-    free(client_list);
-    //free(message_list);
-    remove_queues();
-
-    exit(EXIT_SUCCESS);
-}
-
- // printf("Клиенты:\n");
-            // for (int i = 0; i < cli_list_size; i++) 
-            // {
-            //     printf("Cname: %s, cid %d\n\n", client_list[i].client_name, client_list[i].client_id);
-            // }
-
-// printf("Сообщения:\n");
-            // for (int i = 0; i < mes_list_size; i++) 
-            // {
-            //     printf("%s\n", message_list[i].datetime);
-            //     printf("%s: %s\n", message_list[i].client_name, message_list[i].message);
-            // }
-
-void handle_sigint(int sig) 
-{
-    printf("\nСервер завершает свою работу...\n");
-    remove_queues();
-    exit(EXIT_SUCCESS);
-}
-
-void remove_queues (void) 
-{
-    msgctl(serverId, IPC_RMID, NULL);
-}
-
-void /* SIGCHLD handler */
-grimReaper(int sig)
-{
-    int savedErrno;
-    savedErrno = errno; /* waitpid() might change 'errno' */
-    while (waitpid(-1, NULL, WNOHANG) > 0) 
-    {
-        continue;
-    }
-    errno = savedErrno;
-}
-
+/* 
+ * Функция обслуживает запрос клиента
+ *
+ * req - структура запроса клиента
+ * client_list - список клиентов
+ * cli_list_size - количество клиентов
+ * message_list - список сообщений
+ * mes_list_size - количество сообщений
+ */
 void serve_request (const RequestMsg* req, Client** client_list, int* cli_list_size, Message** message_list, int* mes_list_size) 
 {
     
-    if (req->request_type == REGISTRATION) 
+    if (req->request_type == REGISTRATION) /* Регистрация клиента */
         {
             printf("Клиент %s (id = %d) присоединился к чату!\n", req->mtext, req->client_id);
 
@@ -121,7 +33,7 @@ void serve_request (const RequestMsg* req, Client** client_list, int* cli_list_s
             }            
             
         }
-        else if (req->request_type == DISCONNECTION) 
+        else if (req->request_type == DISCONNECTION) /* ОТключение клиента */
         {
             Client disc_client;
             disc_client.client_id = req->client_id;
@@ -141,7 +53,7 @@ void serve_request (const RequestMsg* req, Client** client_list, int* cli_list_s
             printf("Клиент %s (id = %d) покинул чат!\n", disc_client.client_name, disc_client.client_id);
 
         }
-        else if (req->request_type == MESSAGE_INFO) 
+        else if (req->request_type == MESSAGE_INFO) /* Отправка информации о сообщениях */
         {
             Message new_message;
             Client sender;
@@ -170,6 +82,12 @@ void serve_request (const RequestMsg* req, Client** client_list, int* cli_list_s
         }  
 }
 
+/* 
+ * Функция передает список клиентов клиентам
+ * 
+ * client_list - список клиентов
+ * cli_list_size - количество клиентов 
+ */
 void send_clients (Client* client_list, int cli_list_size) 
 {
     ResponseMsg resp;
@@ -191,6 +109,14 @@ void send_clients (Client* client_list, int cli_list_size)
     }
 }
 
+/* 
+ * Функция передает список сообщений клиентам
+ * 
+ * client_list - список клиентов
+ * cli_list_size - количество клиентов 
+ * message_list - список сообщений
+ * mes_list_size - количество сообщений
+ */
 void send_messages (Client* client_list, int cli_list_size, Message* message_list, int mes_list_size) 
 {
     ResponseMsg resp;           
@@ -214,6 +140,14 @@ void send_messages (Client* client_list, int cli_list_size, Message* message_lis
     }  
 }
 
+/* 
+ * Функция выполняет поиск индекса клиента в списке клиентов
+ * Возвращает индекс, если клиент найден и -1, если клиент не найден
+ * 
+ * list - список клиентов
+ * size - количество клиентов
+ * client_id - идентификатор клиента(его очереди)
+ */
 int get_client_index (const Client* list, int size, int client_id) 
 {
     int index = -1;
@@ -229,6 +163,13 @@ int get_client_index (const Client* list, int size, int client_id)
     return index;
 }
 
+/* 
+ * Функция добавляет нового клиента в список клиентов 
+ * 
+ * list - список клиентов
+ * client - структура клиента для добавления
+ * size - количество клиентов 
+ */
 void add_client (Client** list, const Client* const client, int* size) 
 {
     *list = realloc(*list, (++(*size)) * sizeof(Client));
@@ -238,6 +179,13 @@ void add_client (Client** list, const Client* const client, int* size)
     memmove(&(*list)[*size - 1], client, sizeof(Client));    
 }
 
+/* 
+ * Функция удаляет клиента из списка клиентов при отключении 
+ * 
+ * list - список клиентов 
+ * size - количество клиентов
+ * index - индекс клиента в списке клиентов
+ */
 void remove_client (Client** list, int* size, int index) 
 {    
     for (int i = index; i < *size - 1; i++) 
@@ -253,6 +201,13 @@ void remove_client (Client** list, int* size, int index)
     }            
 }
 
+/* 
+ * Функция добавляет сообщение в список сообщений 
+ * 
+ * list - список сообщений
+ * client - структура сообщения для добавления
+ * size - количество сообщений 
+ */
 void add_message (Message** list, const Message* const message, int* size) 
 {
     *list = realloc(*list, (++(*size)) * sizeof(Message));
@@ -260,4 +215,10 @@ void add_message (Message** list, const Message* const message, int* size)
         err_exit("add_message realloc");
     
     memmove(&(*list)[*size - 1], message, sizeof(Message));
+}
+
+/* Удаляет очередь сервера */
+void remove_queues (void) 
+{
+    msgctl(serverId, IPC_RMID, NULL);
 }

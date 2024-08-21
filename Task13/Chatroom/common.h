@@ -19,6 +19,8 @@
 #include <malloc.h>
 //#include <time.h>
 
+void remove_queues (void);
+
 #define err_exit(message) \
 do { \
     printf("%s -> ", message); \
