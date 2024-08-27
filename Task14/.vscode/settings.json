@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "common_posix.h": "c",
+        "stdio.h": "c",
+        "sysv_serv.h": "c",
+        "stat.h": "c",
+        "wait.h": "c",
+        "types.h": "c",
+        "ncursescr.h": "c",
+        "semv.h": "c",
+        "malloc.h": "c"
+    }
+}
