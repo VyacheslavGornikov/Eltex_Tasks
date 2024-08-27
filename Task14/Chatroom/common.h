@@ -17,7 +17,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <malloc.h>
-#include "semV.h" 
+#include <sys/sem.h> 
 
 #define err_exit(message) \
 do { \

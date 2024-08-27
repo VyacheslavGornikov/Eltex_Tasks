@@ -15,8 +15,8 @@ cr_serv: cr_serv.o
 		$(CC) cr_serv.o -o $@ 
 
 # Правило для сборки cr_cli
-cr_cli: ncursescr.o cr_cli.o
-		$(CC) ncursescr.o cr_cli.o -o $@ $(LDFLAGS)
+cr_cli: semV.o ncursescr.o cr_cli.o
+		$(CC) semV.o ncursescr.o cr_cli.o -o $@ $(LDFLAGS)
 
 # Правила для создания .o файлов
 %.o: %.c

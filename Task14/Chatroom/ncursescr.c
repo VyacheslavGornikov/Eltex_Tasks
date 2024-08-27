@@ -13,7 +13,7 @@ extern int mes_wnd_height, mes_wnd_width;
 extern int cli_wnd_height, cli_wnd_width;
 extern int input_wnd_height, input_wnd_width;
 extern char client_name[NAME_LENGTH];
-//extern int semid;
+
 
 /* Начальные настройки ncurses */
 void init_ncurses(void) 
@@ -28,25 +28,6 @@ void init_ncurses(void)
     init_pair(2, COLOR_GREEN, COLOR_BLACK); // Client
     init_pair(3, COLOR_YELLOW, COLOR_BLACK); // Message   
 }
-
-// void sem_reserve (int _semid, int _sem_num) 
-// {
-//     //struct sembuf lock[2] = {{_sem_num, 0, 0}, {_sem_num, 1, 0}};
-//     struct sembuf sop = {_sem_num, -1, 0};
-//     if (semop(_semid, &sop, 1) == -1) 
-//     {
-//         err_exit("reserve semop");
-//     }
-// }
-
-// void sem_release (int _semid, int _sem_num) 
-// {
-//     struct sembuf sop = {_sem_num, 1, 0};
-//     if (semop(_semid, &sop, 1) == -1) 
-//     {
-//         err_exit("release semop");
-//     }
-// }
 
 /*
  * Создание окон ncurses для чат-комнаты
@@ -86,10 +67,8 @@ void create_windows(void)
  * cli_list_size - количество клиентов 
  */
 void print_clients(const char client_list[][NAME_LENGTH], int cli_list_size)
-{
-    //sem_reserve(semid, 0);
-    werase(cli_wnd);
-    
+{    
+    werase(cli_wnd);    
     for (int i = 0; i < cli_list_size; i++) 
     {
         if (strcmp(client_name, client_list[i]) == 0)
@@ -98,10 +77,8 @@ void print_clients(const char client_list[][NAME_LENGTH], int cli_list_size)
         }
         wprintw(cli_wnd, "%s\n", client_list[i]);
         wattroff(cli_wnd, A_REVERSE);
-    }    
-    
-    wrefresh(cli_wnd);
-    //sem_release(semid, 0);
+    }      
+    wrefresh(cli_wnd);    
 }
 
 /* 
@@ -112,10 +89,8 @@ void print_clients(const char client_list[][NAME_LENGTH], int cli_list_size)
  * mes_list_size - количество сообщений 
  */
 void print_messages(const Message *message_list, int mes_list_size)
-{
-    //sem_reserve(semid, 0);
-    werase(mes_wnd);
-    
+{    
+    werase(mes_wnd);    
     for (int i = 0; i < mes_list_size; i++)
     {
         wattron(mes_wnd, COLOR_PAIR(1));
@@ -127,9 +102,7 @@ void print_messages(const Message *message_list, int mes_list_size)
         wattron(mes_wnd, COLOR_PAIR(3));
         wprintw(mes_wnd, "%s\n", message_list[i].message);
         wattroff(mes_wnd, COLOR_PAIR(3));
-    }
-    
-    wrefresh(mes_wnd);
-    //sem_release(semid, 0);
+    }    
+    wrefresh(mes_wnd);    
 }
 

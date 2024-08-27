@@ -1,7 +1,7 @@
 #include "common.h"
 #include "chatroom.h"
 #include "ncursescr.h"
-//#include "semV.h"
+#include "semV.h"
 #include <sys/ioctl.h>
 
 static int shmid;
@@ -9,6 +9,7 @@ static int semid;
 int semaphore_number;
 static pthread_t receiving_thread, sending_thread;
 char client_name[NAME_LENGTH];
+SharedData* chat;
 
 WINDOW* mes_border = NULL;
 WINDOW* cli_border = NULL;
@@ -25,16 +26,12 @@ void sig_winch(int signo);
 void* handle_response(void*);
 void* handle_message (void*);
 void cancel_pthreads (void);
-void sem_init(int _semid, int _sem_num);
-void sem_reserve (int _semid, int _sem_num);
-void sem_release (int _semid, int _sem_num);
 
 int main(int argc, char *argv[]) 
 {
     signal(SIGINT, handle_sigint);
     signal(SIGWINCH, sig_winch); // обработка изменения размеров окна
-    SharedData* chat;
-
+    
     if (argc != 2) 
     {
         fprintf(stderr, "Usage: %s <client_name>\n", argv[0]);
@@ -42,8 +39,8 @@ int main(int argc, char *argv[])
     }          
     
     strncpy(client_name, argv[1], NAME_LENGTH);       
-    
-    /* Создаем очередь для клиента и подключаемся к очереди сервера */
+
+    /* Открываем участок разделяемой памяти */    
     shmid = shmget(SHM_KEY, sizeof(SharedData), 0644);
     if (shmid == -1) 
     {
@@ -55,7 +52,8 @@ int main(int argc, char *argv[])
     {
         err_exit("shmat");
     }
-
+    
+    /* Открываем семафор */  
     semid = semget(SEM_KEY, MAX_CLIENTS, 0644);
     if (semid == -1) 
     {
@@ -63,19 +61,22 @@ int main(int argc, char *argv[])
         err_exit("semget");
     }
 
-    semaphore_number = chat->clients_num;
-
-    sem_init(semid, semaphore_number);
-    //sem_reserve(semid, 0);
+    /* Инициализируем семафор и добавляем клиента */  
+    semaphore_number = chat->clients_num;    
+    
     strncpy(chat->client_list[chat->clients_num], client_name, NAME_LENGTH);
     chat->clients_num++;
-
-    print_clients(chat->client_list, chat->clients_num);
-    if (chat->messages_num != 0) 
+    
+    semaphore_number = -1;
+    for (int i = 0; i < chat->clients_num; i++) 
     {
-        print_messages(chat->message_list, chat->messages_num);
+        if (strcmp(chat->client_list[i], client_name) == 0) 
+        {
+            semaphore_number = i;
+        }
     }
-    //sem_release(semid, 0);   
+
+    sem_init(semid, semaphore_number);     
    
     /* Подключаем интерфейс ncurses */
     init_ncurses();
@@ -104,7 +105,18 @@ void handle_sigint(int sig)
     clear();
     endwin();
     cancel_pthreads();
-    //semctl(semid, 0, IPC_RMID);    
+    for (int i = 0; i < chat->clients_num; i++) 
+    {
+        if (strcmp(chat->client_list[i], client_name) == 0) 
+        {
+            for (int j = i; j < chat->clients_num - 1; j++) 
+            {
+                strncpy(chat->client_list[j], chat->client_list[j + 1], NAME_LENGTH);
+            }
+            chat->clients_num--;
+            break;
+        }
+    }   
     printf("Клиент вышел из чата...\n");     
     exit(EXIT_SUCCESS);
 }
@@ -130,8 +142,6 @@ void* handle_response (void* arg)
         sem_release(semid, semaphore_number);        
     }
 }
-
-
 
 /* Функция для запуска потока-отправителя (sending_thread) сообщений серверу */
 void* handle_message (void* arg) 
@@ -169,50 +179,8 @@ void cancel_pthreads (void)
     pthread_cancel(receiving_thread);    
 }
 
-void sem_init(int _semid, int _sem_num)
-{
-    if (semctl(_semid, _sem_num, SETVAL, 1) == -1)
-    {
-        err_exit("semctl");
-    }
-}
 
-void sem_reserve (int _semid, int _sem_num) 
-{
-    //struct sembuf lock[2] = {{_sem_num, 0, 0}, {_sem_num, 1, 0}};
-    struct sembuf sop = {_sem_num, -1, 0};
-    if (semop(_semid, &sop, 1) == -1) 
-    {
-        err_exit("reserve semop");
-    }
-}
 
-void sem_release (int _semid, int _sem_num) 
-{
-    struct sembuf sop = {_sem_num, 1, 0};
-    if (semop(_semid, &sop, 1) == -1) 
-    {
-        err_exit("release semop");
-    }
-}
-// void sem_reserve (int _semid, int _sem_num) 
-// {
-//     //struct sembuf lock[2] = {{_sem_num, 0, 0}, {_sem_num, 1, 0}};
-//     struct sembuf sop = {_sem_num, -1, 0};
-//     if (semop(_semid, &sop, 1) == -1) 
-//     {
-//         err_exit("reserve semop");
-//     }
-// }
-
-// void sem_release (int _semid, int _sem_num) 
-// {
-//     struct sembuf sop = {_sem_num, 1, 0};
-//     if (semop(_semid, &sop, 1) == -1) 
-//     {
-//         err_exit("release semop");
-//     }
-// }
 
 
 

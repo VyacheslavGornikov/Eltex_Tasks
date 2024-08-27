@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "chatroom.h": "c"
+        "chatroom.h": "c",
+        "sem.h": "c"
     }
 }
