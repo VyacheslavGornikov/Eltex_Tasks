@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "cstdlib": "cpp",
+        "udp_local.h": "c",
+        "in.h": "c",
+        "types.h": "c",
+        "inet.h": "c"
+    }
+}
