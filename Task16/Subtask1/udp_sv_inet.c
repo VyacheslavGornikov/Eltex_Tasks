@@ -1,6 +1,8 @@
 #include "common.h"
 #include "inet_socks.h"
 
+void sig_int(int signum);
+
 int main (void) 
 {
     struct sockaddr_in svaddr, claddr;
@@ -53,5 +55,11 @@ int main (void)
         err_exit("sendto client");
     }
 
+    exit(EXIT_SUCCESS);
+}
+
+void sig_int(int signum) 
+{
+    printf("Прерывание программы по сигналу signum = %d\n", signum);
     exit(EXIT_SUCCESS);
 }
