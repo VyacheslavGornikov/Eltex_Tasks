@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "inet_sockets.h": "c",
+        "ip.h": "c",
+        "ethernet.h": "c",
+        "if_ether.h": "c"
+    }
+}

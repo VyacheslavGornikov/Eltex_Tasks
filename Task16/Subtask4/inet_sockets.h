@@ -22,6 +22,14 @@
 #define UDP_PORT 50000
 #define TCP_PORT 50001
 
+// Link level
+#define SERVER_INTERFACE "enp0s3"
+#define CLIENT_IP "192.168.1.44"
+#define SERVER_IP "192.168.1.252"
+#define CLIENT_MAC "08:00:27:01:16:7b"
+#define SERVER_MAC "08:00:27:08:3e:ba"
+#define SERVER_MAC_STR "08:00:27:08:3e:ba"
+
 int inet_connect (const char* host, const char* service, int sock_type);
 int inet_listen(char* service, int backlog, socklen_t* addrlen);
 int inet_bind(char* service, int sock_type, socklen_t* addrlen);
