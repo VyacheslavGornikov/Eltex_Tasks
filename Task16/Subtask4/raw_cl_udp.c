@@ -78,7 +78,7 @@ int main (void)
         /* Если порт назначения в udp_header совпал с портом нашего клиента, то печатаем полученное сообщение */
         if (ntohs(recv_udp_hdr->dest) == RAW_PORT)  
         {
-            if (inet_ntop(AF_INET, &svaddr, svaddrStr, INET_ADDRSTRLEN) == NULL) 
+            if (inet_ntop(AF_INET, &svaddr.sin_addr, svaddrStr, INET_ADDRSTRLEN) == NULL) 
             {
                 err_exit("inet_ntop");
             }

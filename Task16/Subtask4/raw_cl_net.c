@@ -13,9 +13,9 @@ int main (void)
 {
     int cfd;
     struct sockaddr_in svaddr;
-    // struct in_addr inaddr_any;
-    // inaddr_any.s_addr = INADDR_ANY;
-    socklen_t addr_len;    
+    struct in_addr inaddr_any;
+    inaddr_any.s_addr = INADDR_ANY;
+        
     char svaddrStr[INET_ADDRSTRLEN];
     char message[BUF_SIZE] = "hello world!";
 
@@ -34,7 +34,7 @@ int main (void)
     /* Структура, хранящая endpoint сервера */
     memset(&svaddr, 0, sizeof(struct sockaddr_in));
     svaddr.sin_family = AF_INET;
-    svaddr.sin_addr.s_addr = inet_addr(SERVER_IP);
+    svaddr.sin_addr = inaddr_any;
     svaddr.sin_port = htons(PORT_NUM);
 
     /* Заполняем заголовок IP для отправки сообщения */
@@ -84,11 +84,10 @@ int main (void)
     
 
     while (1)
-    {
-        char recv_buf[512];
-        addr_len = sizeof(struct sockaddr_in);
+    {               
         /* Получаем сообщение вида ip_header(20 байт) + udp_header(8 байт) + message(BUF_SIZE) */
-        int recv_bytes =  recvfrom(cfd, recv_buf, sizeof(recv_buf), 0, (struct sockaddr*) &svaddr, &addr_len);
+        char recv_buf[512]; 
+        int recv_bytes =  recvfrom(cfd, recv_buf, sizeof(recv_buf), 0, NULL, NULL);
         if (recv_bytes == -1) 
         {
             err_exit("recvfrom server");
@@ -100,7 +99,10 @@ int main (void)
         /* Если порт назначения в udp_header совпал с портом нашего клиента, то печатаем полученное сообщение */
         if (ntohs(recv_udp_hdr->dest) == RAW_PORT)  
         {
-            if (inet_ntop(AF_INET, &svaddr, svaddrStr, INET_ADDRSTRLEN) == NULL) 
+            struct iphdr* recv_ip_hdr = (struct iphdr*) recv_buf;
+            struct in_addr recv_addr;
+            recv_addr.s_addr = recv_ip_hdr->saddr;
+            if (inet_ntop(AF_INET, &recv_addr, svaddrStr, INET_ADDRSTRLEN) == NULL) 
             {
                 err_exit("inet_ntop");
             }

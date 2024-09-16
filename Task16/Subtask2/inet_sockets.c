@@ -5,6 +5,13 @@
 #include "unistd.h"
 #include "errno.h"
 
+/*
+ * Возвращает файловый дескриптор сокета, соединенный с хостом
+ *
+ * host - адрес хоста
+ * service - порт хоста
+ * sock_type - тип сокета
+ */
 int inet_connect (const char* host, const char* service, int sock_type) 
 {
     struct addrinfo hints;
@@ -45,6 +52,15 @@ int inet_connect (const char* host, const char* service, int sock_type)
     return (rp == NULL) ? -1 : cfd;
 }
 
+/*
+ * Вспомогательная функция для inet_bind и inet_listen
+ * 
+ * service - порт сокета
+ * sock_type - тип сокета
+ * addrlen - указатель на переменную, хранящую размер структуры sockaddr
+ * do_listen - слушать ли сокет?
+ * backlog - допустимый размер очереди ожидающих соединений 
+ */
 static int inet_passive_socket(char* service, int sock_type, socklen_t* addrlen, int do_listen, int backlog)
 {
     struct addrinfo hints;
@@ -110,29 +126,29 @@ static int inet_passive_socket(char* service, int sock_type, socklen_t* addrlen,
     return (rp == NULL) ? -1 : sfd;
 }
 
+/*
+ * Возвращает файловый дескриптор слушающего потокового сокета(SOCK_STREAM)
+ * 
+ * service - порт сокета
+ * backlog - допустимый размер очереди ожидающих соединений
+ * addrlen - указатель на переменную, хранящую размер структуры sockaddr
+ */
 int inet_listen(char* service, int backlog, socklen_t* addrlen) 
 {
     return inet_passive_socket(service, SOCK_STREAM, addrlen, INET_LISTEN, BACKLOG);
 }
 
+/*
+ * Возвращает файловый дескриптор указанного типа сокета, привязанного к указанному порту
+ * 
+ * service - порт сокета
+ * sock_type - тип сокета
+ * addrlen - указатель на переменную, хранящую размер структуры sockaddr
+ */
 int inet_bind(char* service, int sock_type, socklen_t* addrlen) 
 {
     return inet_passive_socket(service, sock_type, addrlen, 0, 0);
 }
 
-char* inet_addr_str(const struct sockaddr* addr, socklen_t addrlen, char* addr_str, int addr_strlen) 
-{
-    char host[NI_MAXHOST], service[NI_MAXSERV];
-    if (getnameinfo(addr, addrlen, host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV) == 0) 
-    {
-        snprintf(addr_str, addr_strlen, "%s:%s", host, service);
-    }
-    else 
-    {
-        snprintf(addr_str, addr_strlen, "?UNKNOWN?");
-    }
 
-    addr_str[addr_strlen - 1] = '\0';
-    return addr_str;
-}
 

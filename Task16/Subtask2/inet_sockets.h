@@ -25,6 +25,5 @@
 int inet_connect (const char* host, const char* service, int sock_type);
 int inet_listen(char* service, int backlog, socklen_t* addrlen);
 int inet_bind(char* service, int sock_type, socklen_t* addrlen);
-char* inet_addr_str(const struct sockaddr* addr, socklen_t addrlen, char* addr_str, int addr_strlen);
 
 #endif

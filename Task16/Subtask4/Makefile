@@ -10,7 +10,7 @@ PEDFLAGS := -Wall -Werror
 
 .PHONY: clean
 
-all: 1 2
+all: 1 2 3
 
 1: raw_cl_udp.o		 
 		$(CC) raw_cl_udp.o -o raw_cl_udp
