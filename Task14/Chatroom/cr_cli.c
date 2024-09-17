@@ -61,12 +61,12 @@ int main(int argc, char *argv[])
         err_exit("semget");
     }
 
-    /* Инициализируем семафор и добавляем клиента */  
-    semaphore_number = chat->clients_num;    
+    /* Инициализируем семафор и добавляем клиента */       
     
     strncpy(chat->client_list[chat->clients_num], client_name, NAME_LENGTH);
     chat->clients_num++;
     
+    /* Номер семафора равен индексу клиента в списке */
     semaphore_number = -1;
     for (int i = 0; i < chat->clients_num; i++) 
     {
@@ -83,18 +83,18 @@ int main(int argc, char *argv[])
     create_windows();
 
     /* Создаем потоки для обмена сообщениями между сервером и клиентом */
-    if (pthread_create(&sending_thread, NULL, handle_message, chat) != 0) 
-    {
-        err_exit("pthread_create sending_thread");
-    }
     if (pthread_create(&receiving_thread, NULL, handle_response, chat) != 0)
     {
         err_exit("pthread_create receiving_thread");
-    }    
+    }  
+    if (pthread_create(&sending_thread, NULL, handle_message, chat) != 0) 
+    {
+        err_exit("pthread_create sending_thread");
+    }     
     
-    /* ВОжидаем завершения потоков потоков */
-    pthread_join(sending_thread, NULL);
-    pthread_join(receiving_thread, NULL);  
+    /* Ожидаем завершения потоков потоков */
+    pthread_join(receiving_thread, NULL);
+    pthread_join(sending_thread, NULL);      
         
     exit(EXIT_SUCCESS);
 }
