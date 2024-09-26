@@ -1,0 +1,56 @@
+*** Конфигурация устройств на шине pci ***
+00:00.0 Host bridge: Intel Corporation 440FX - 82441FX PMC [Natoma] (rev 02)
+00:01.0 ISA bridge: Intel Corporation 82371SB PIIX3 ISA [Natoma/Triton II]
+00:01.1 IDE interface: Intel Corporation 82371AB/EB/MB PIIX4 IDE (rev 01)
+00:02.0 VGA compatible controller: VMware SVGA II Adapter
+00:03.0 Ethernet controller: Intel Corporation 82540EM Gigabit Ethernet Controller (rev 02)
+00:04.0 System peripheral: InnoTek Systemberatung GmbH VirtualBox Guest Service
+00:05.0 Multimedia audio controller: Intel Corporation 82801AA AC'97 Audio Controller (rev 01)
+00:06.0 USB controller: Apple Inc. KeyLargo/Intrepid USB
+00:07.0 Bridge: Intel Corporation 82371AB/EB/MB PIIX4 ACPI (rev 08)
+00:0b.0 USB controller: Intel Corporation 82801FB/FBM/FR/FW/FRW (ICH6 Family) USB2 EHCI Controller
+00:0d.0 SATA controller: Intel Corporation 82801HM/HEM (ICH8M/ICH8M-E) SATA Controller [AHCI mode] (rev 02)
+
+За основу берем ядро 6.8.0-45-generic, однако это ядро содержит много лишних опций, поэтому отключаем часть из них:
+
+*** Processor type and features  ***
+Support for extended (non-PC) x86 platforms
+AMD ACPI2Platform devices support
+Support for deprecated /dev/mcelog character device
+AMD MCE features
+AMD Secure Memory Encryption (SME) support
+Old style AMD Opteron NUMA detection и т.д.
+Если кратко, то здесь я отключал все, что связано с AMD, и устаревшие или экспериментальные функции
+
+*** Virtualization ***
+KVM for AMD processors support
+
+*** Networking support ***
+Amateur Radio support
+CAN bus subsystem support
+Bluetooth subsystem support
+Plan 9 Resource Sharing Support (9P2000)
+CAIF support
+Page pool stats
+В подпункте Networking options я тоже отключал некоторые протоколы, но мне трудно сказать, какие именно, поэтому ограничусь параметрами основного раздела
+
+*** Device Drivers ***
+EISA support
+Multiple devices driver support (RAID and LVM)
+Macintosh device drivers
+SPI support
+MMC/SD/SDIO card support
+Staging drivers
+Hardware Spinlock drivers
+Industrial I/O support
+Non-Transparent Bridge support
+IndustryPack bus support
+Unified support for USB4 and Thunderbolt
+FPGA Configuration Framework
+Eckelmann SIOX Support
+On-Chip Interconnect management support
+Hardware Timestamping Engine (HTE) Support
+Здесь можно еще много чего отключить, например интерфейсы железок по типу I2C, I3C, а также различные on-chip девайсы, но по тем же причинам ограничиваюсь параметрами основного раздела
+
+Остальные разделы не менялись или были изменены незначительно
+
