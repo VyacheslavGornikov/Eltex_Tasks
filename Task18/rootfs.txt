@@ -13,7 +13,7 @@ int main (void)
 }
 
 2 Сборка архива с временной КФС
-2.1 arm-linux-gnueabihf-gcc -static init.c -o init - стфтическая сборка бинарного файла КФС
+2.1 arm-linux-gnueabihf-gcc -static init.c -o init - статическая сборка бинарного файла КФС
 2.2 file ./init - убеждаемся, что файл собран нужным образом (должен быть статическим).
 Вывод: ./init: ELF 32-bit LSB executable, ARM, EABI5 version 1 (GNU/Linux), statically linked, BuildID[sha1]=b4e411f0541dbcfe23ffe295f161534b0b5b7800, for GNU/Linux 3.2.0, not stripped
 2.3 echo init | cpio -o -H newc | gzip > initramfs.cpio.gz - упаковываем файл init в gzip архив
