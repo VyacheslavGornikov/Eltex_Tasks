@@ -1,0 +1,56 @@
+I Сборка временной корневой файловой системы(КФС)
+1 Создаем программу init.c с следующим кодом:
+#include <stdio.h>
+#include <unistd.h>
+
+int main (void) 
+{
+    const int TIME = 5;
+    printf("This is temporary fs!!! It will crash after %d seconds!\n", TIME);
+    sleep(TIME);
+
+    return 0;
+}
+
+2 Сборка архива с временной КФС
+2.1 arm-linux-gnueabihf-gcc -static init.c -o init - стфтическая сборка бинарного файла КФС
+2.2 file ./init - убеждаемся, что файл собран нужным образом (должен быть статическим).
+Вывод: ./init: ELF 32-bit LSB executable, ARM, EABI5 version 1 (GNU/Linux), statically linked, BuildID[sha1]=b4e411f0541dbcfe23ffe295f161534b0b5b7800, for GNU/Linux 3.2.0, not stripped
+2.3 echo init | cpio -o -H newc | gzip > initramfs.cpio.gz - упаковываем файл init в gzip архив
+
+3 Запуск ядра с временной корневой файловой системой
+3.1 Копируем initramfs.cpio.gz в папку с образом ядра и dtb файлом (в моем случае arm_kernel)
+3.2 QEMU_AUDIO_DRV=none qemu-system-arm -M vexpress-a9 -kernel zImage -initrd initramfs.cpio.gz -dtb vexpress-v2p-ca9.dtb -append "console=ttyAMA0" -nographic - запуск ядра
+
+II Сборка КФС через busybox
+1 Скачиваем последнюю стабильную версию с сайта https://busybox.net/ (19 May 2023 -- BusyBox 1.36.1 (stable)) и распаковываем в произвольную папку
+
+2 Сборка архива с КФС 
+2.1 Идем в папку с busybox и собираем конфигурационный файл командой ARCH=arm make defconfig
+2.2 ARCH=arm make menuconfig и включаем следующие пункты:
+
+*** Settings *** 
+Build static binary (no shared libs)
+(arm-linux-gnueabihf-) Cross compiler prefix
+
+*** Networking Utilities ***
+Отключаем tc, т.к. наблюдается баг в busybox при сборке на новых версиях ядра Linux [Bug 15934]
+
+2.3 Собираем бинарный файл busybox командой make -j4 и проверяем его командой file busybox (должен быть статическим).
+Вывод: busybox: ELF 32-bit LSB executable, ARM, EABI5 version 1 (GNU/Linux), statically linked, BuildID[sha1]=7d496795917f67ed72d3704ef4deb9e64952a2cc, for GNU/Linux 3.2.0, stripped
+2.4 make install - собираем минимальную КФС (по умолчанию файлы будут находиться в папке _install)
+2.5 В папке _install собираем архив initramfs.cpio.gz командой find . | cpio -o -H newc | gzip > initramfs.cpio.gz
+2.6 Копируем initramfs.cpio.gz в папку с образом ядра и dtb файлом (в моем случае arm_kernel)
+
+3 Запуска ядра с КФС от Busybox (в папке arm_kernel) и первичная настройка 
+3.1 QEMU_AUDIO_DRV=none qemu-system-arm -M vexpress-a9 -kernel zImage -initrd initramfs.cpio.gz -dtb vexpress-v2p-ca9.dtb -append "console=ttyAMA0 rdinit=/bin/ash" -nographic - запуск ядра с добавлением переменной rdinit, которой в качестве параметра указан командный интерпретатор ash
+3.2 Создаем папки proc и sys командами:
+mkdir proc
+mkdir sys
+3.3 Монтируем файловые системы proc и sysfs командами:
+mount -t proc proc proc
+mount -t sysfs sys sys
+
+Теперь утилита ps отображает запущенные процессы
+
+
