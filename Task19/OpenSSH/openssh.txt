@@ -1,0 +1,60 @@
+
+1 Загрузка необходимых компонентов для OpenSSH
+1.1 git clone https://github.com/openssh/openssh-portable.git - получаем openssh с гитхаб
+1.2 Качаем zlib по ссылке: https://zlib.net/
+1.3 Качаем OpenSSL по ссылке: https://openssl-library.org/source/index.html
+(Все необходимые ссылки на библиотеки содержатся в файле openssh-portable/INSTALL)
+
+2 Сборка zlib
+2.1 Идем в корень zlib-1.3.1
+2.2 ./configure --help - просмотр опций файла конфигурации. Сборка только для [--archs="-arch i386 -arch x86_64"], поэтому нужно будет задать через переменную среды окружения СС наш кросс-компилятор
+2.3 CC=arm-linux-gnueabihf-gcc ./configure --static --prefix=$PWD/_install - конфигурация для Makefile
+2.4 make -j4 - собираем библиотеку
+2.5 make install - устанавливаем файлы библиотеки zlib в папку _install
+
+3 Сборка OpenSSL
+3.1 Идем в корень openssl-3.3.2
+3.2 ./Configure linux-generic32 no-shared no-dso --cross-compile-prefix=arm-linux-gnueabihf- --prefix=$PWD/_install --openssldir=$PWD/_install/ssl -fPIC - конфигурация openssl (добавление CFLAGS = -fPIC требует инструкция в файле openssh-portable/INSTALL)
+3.3 make -j4 - собираем библиотеку
+3.4 make install - устанавливаем файлы библиотеки openssl в папку _install
+
+4 OpenSSH
+4.1 Идем в корень openssh-portable
+4.2 Т.к. загрузка была произведена с гита, то по инструкции сначала генерируем конфиги инструментами Autotools - команда autoreconf
+4.3 ./configure --disable-strip --host=arm-linux-gnueabihf --prefix=$PWD/_install --with-zlib=$PWD/../zlib-1.3.1/_install --with-ssl-dir=$PWD/../openssl-3.3.2/_install - конфигурация openssh
+4.4 make -j4 - собираем библиотеку
+4.5 make install - устанавливаем файлы библиотеки openssh в папку _install
+
+5 Сборка архива корневой файловой системы initramfs.cpio.gz
+5.1 Копируем все файлы сборок библиотек zlib, OpenSSL и OpenSSH из папок _install в произвольную папку (в моем случае RFS_Make)
+5.2 readelf -d ssh | grep "Shared library" - узнаем список разделяемых библиотек для запуска ssh. Вывод:
+ 0x00000001 (NEEDED)                     Shared library: [libc.so.6]
+ 0x00000001 (NEEDED)                     Shared library: [ld-linux-armhf.so.3]
+ Этот же список библиотек мы получим для файла openssl
+5.3 В директории /usr/arm-linux-gnueabihf/lib находим библиотеки, указанные в предыдущем пункте и копируем их в RFS_Make/lib
+5.4 В папке RFS_Make запускаем команду find . | cpio -o -H newc | gzip > initramfs.cpio.gz для сборки архива с корневой файловой системой
+5.5 Полученный архив копируем в папку, где лежат образ ядра zImage и дерево устройств с расширением .dtb (в моем случае arm_kernel)
+
+6 Запуск ядра и настройка системы для использования сервисов ssh
+6.1 В папке arm_kernel выполняем команду 
+QEMU_AUDIO_DRV=none qemu-system-arm -M vexpress-a9 -kernel zImage -initrd initramfs.cpio.gz -dtb vexpress-v2p-ca9.dtb -append "console=ttyAMA0 rdinit=/bin/ash" -m 512M -nographic - здесь -m 512M задает размер оперативной памяти в 512 Мбайт, т.к. содержимое архива initramfs.cpio.gz оказалось довольно большим для запущенного arm устройства, что приводило к ошибке монтирования корневой файловой системы и последующему kernel panic
+6.2 Создаем папки proc и sys командами:
+mkdir proc
+mkdir sys
+6.3 Монтируем файловые системы proc и sysfs командами:
+mount -t proc proc proc
+mount -t sysfs sys sys
+6.4 Пытаемся запустить ssh-keygen и получаем сообщение: Couldn't open /dev/null: No such file or directory
+Поэтому создаем необходимый файл, выполняющий функцию утилизации ненужных файлов (черная дыра), командой mknod -m 666 /dev/null c 1 3
+6.5 Снова пытаемся запустить ssh-keygen и получаем сообщение: 
+[  683.803578] random: crng init done
+No user exists for uid 0 - это значит, что в системе не зарегистрирован пользователь под uid 0, т.е. root, создаем его:
+~ # echo "root:x:0:0:root:/root:/bin/sh" > /etc/passwd
+~ # echo "root:!:0:0:99999:7:::" > /etc/shadow
+~ # mkdir -p /root
+Смотрим текущего пользователя:
+~ # whoami
+root
+
+Теперь мы можем запускать ssh-службы, сборка завершена!
+
