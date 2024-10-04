@@ -14,7 +14,8 @@
 
 3 Сборка OpenSSL
 3.1 Идем в корень openssl-3.3.2
-3.2 ./Configure linux-generic32 no-shared no-dso --cross-compile-prefix=arm-linux-gnueabihf- --prefix=$PWD/_install --openssldir=$PWD/_install/ssl -fPIC - конфигурация openssl (добавление CFLAGS = -fPIC требует инструкция в файле openssh-portable/INSTALL)
+3.2 ./Configure linux-generic32 no-shared no-dso --cross-compile-prefix=arm-linux-gnueabihf- --prefix=$PWD/_install --openssldir=$PWD/_install/ssl -fPIC - конфигурация openssl 
+(добавление CFLAGS = -fPIC требует инструкция в файле openssh-portable/INSTALL)
 3.3 make -j4 - собираем библиотеку
 3.4 make install - устанавливаем файлы библиотеки openssl в папку _install
 
@@ -37,7 +38,8 @@
 
 6 Запуск ядра и настройка системы для использования сервисов ssh
 6.1 В папке arm_kernel выполняем команду 
-QEMU_AUDIO_DRV=none qemu-system-arm -M vexpress-a9 -kernel zImage -initrd initramfs.cpio.gz -dtb vexpress-v2p-ca9.dtb -append "console=ttyAMA0 rdinit=/bin/ash" -m 512M -nographic - здесь -m 512M задает размер оперативной памяти в 512 Мбайт, т.к. содержимое архива initramfs.cpio.gz оказалось довольно большим для запущенного arm устройства, что приводило к ошибке монтирования корневой файловой системы и последующему kernel panic
+QEMU_AUDIO_DRV=none qemu-system-arm -M vexpress-a9 -kernel zImage -initrd initramfs.cpio.gz -dtb vexpress-v2p-ca9.dtb -append "console=ttyAMA0 rdinit=/bin/ash" -m 512M -nographic 
+здесь -m 512M задает размер оперативной памяти в 512 Мбайт, т.к. содержимое архива initramfs.cpio.gz оказалось довольно большим для запущенного arm устройства, что приводило к ошибке монтирования корневой файловой системы и последующему kernel panic
 6.2 Создаем папки proc и sys командами:
 mkdir proc
 mkdir sys
